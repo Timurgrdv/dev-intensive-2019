@@ -13,7 +13,7 @@ abstract class BaseMessage(
     /** создадим абстрактную фабрику, которая будет нам позволять создавать объекты разного типа */
     companion object AbstractFactory {
         var lastId = -1
-        fun makeMeassage(
+        fun makeMessage(
             from: User?,
             chat: Chat,
             date: Date = Date(),
