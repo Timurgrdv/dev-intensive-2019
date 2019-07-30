@@ -184,10 +184,10 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
     private fun makeErrorMessage() {
         val errorMessage = when (benderObj.question) {
             Bender.Question.NAME -> "Имя должно начинаться с заглавной буквы"
-            Bender.Question.PROFESSION -> "Имя должно начинаться с заглавной буквы"
-            Bender.Question.MATERIAL -> "Имя должно начинаться с заглавной буквы"
-            Bender.Question.BDAY -> "Имя должно начинаться с заглавной буквы"
-            Bender.Question.SERIAL -> "Имя должно начинаться с заглавной буквы"
+            Bender.Question.PROFESSION -> "Профессия должна начинаться со строчной буквы"
+            Bender.Question.MATERIAL -> "Материал не должен содержать цифр"
+            Bender.Question.BDAY -> "Год моего рождения должен содержать только цифры"
+            Bender.Question.SERIAL -> "Серийный номер содержит только цифры, и их 7"
             else -> "Ты справился\nНа этом все, вопросов больше нет"
         }
         textTxt.text = errorMessage + "\n" + benderObj.question.question
