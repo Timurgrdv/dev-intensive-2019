@@ -7,7 +7,7 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import kotlin.math.roundToLong
 
-fun Activity.hideKeyboard() {
+fun Activity.hideKeyboard(){
     val focus = this.currentFocus
     focus?.let {
         (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.let {
@@ -16,7 +16,7 @@ fun Activity.hideKeyboard() {
     }
 }
 
-fun Activity.isKeyboardOpen(): Boolean {
+fun Activity.isKeyboardOpen(): Boolean{
     val rootView = findViewById<View>(android.R.id.content)
     val visibleBounds = Rect()
     rootView.getWindowVisibleDisplayFrame(visibleBounds)
@@ -29,5 +29,4 @@ fun Activity.isKeyboardOpen(): Boolean {
 fun Activity.isKeyboardClosed(): Boolean {
     return this.isKeyboardOpen().not()
 }
-
 

@@ -17,19 +17,48 @@ class Bender(var status: Status = Status.NORMAL, var question: Question = Questi
      *
      */
 
-    fun listenAnswer(answer: String): Pair<String, Triple<Int, Int, Int>> {
+//    fun listenAnswer(answer: String): Pair<String, Triple<Int, Int, Int>> {
+//        return if (question.answer.contains(answer)) {
+//            question = question.nextQuestion()
+//            "Отлично - ты справился\n${question.question}" to status.color // мы ожидаем пару, поэтому нам нужно вернуть еще и цвет
+//        } else {
+//            if (status == Status.CRITICAL) {
+//                status = Status.NORMAL
+//                question = Question.NAME
+//                "Это неправильный ответ. Давай все по новой\n${question.question}" to status.color
+//            }
+//            status = status.nextStatus()
+//            "Это неправильный ответ\n${question.question}" to status.color // мы ожидаем пару, поэтому нам нужно вернуть еще и цвет
+//        }
+//    }
+
+    fun listenAnswer(answer:String):Pair<String, Triple<Int, Int, Int>>{
+        return when(question){
+            Question.IDLE -> question.question to status.color
+            else -> "${checkAnswer(answer)}\n${question.question}" to status.color
+        }
+    }
+
+    private fun checkAnswer(answer: String): String {
         return if (question.answer.contains(answer)) {
             question = question.nextQuestion()
-            "Отлично - ты справился\n${question.question}" to status.color // мы ожидаем пару, поэтому нам нужно вернуть еще и цвет
-        } else {
-            if (status == Status.CRITICAL) {
-                status = Status.NORMAL
-                question = Question.NAME
-                "Это неправильный ответ. Давай все по новой\n${question.question}" to status.color
-            }
-            status = status.nextStatus()
-            "Это неправильный ответ\n${question.question}" to status.color // мы ожидаем пару, поэтому нам нужно вернуть еще и цвет
+            "Отлично - ты справился"
         }
+        else {
+            if (status == Status.CRITICAL){
+                resetStates()
+                "Это неправильный ответ. Давай все по новой"
+            }
+            else{
+                status = status.nextStatus()
+                "Это неправильный ответ"
+            }
+        }
+    }
+
+    private fun resetStates() {
+        status = Status.NORMAL
+        question = Question.NAME
     }
 
     enum class Status(val color: Triple<Int, Int, Int>) {
