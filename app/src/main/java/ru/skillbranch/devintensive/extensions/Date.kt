@@ -2,6 +2,8 @@ package ru.skillbranch.devintensive.extensions
 
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 const val SECOND = 1000L
 const val MINUTE = 60 * SECOND
@@ -42,7 +44,45 @@ enum class TimeUnits {
     SECOND,
     MINUTE,
     HOUR,
-    DAY
+    DAY;
+
+    fun plural(value: Int): String {
+        return "$value ${getPluralForm(value, this)}"
+    }
 }
+
+fun getPluralForm(amount: Int, units: TimeUnits): String {
+    val posAmount = abs(amount) % 100
+
+    return when (posAmount) {
+        1 -> Counter.ONE.get(units)
+        in 2..4 -> Counter.FEW.get(units)
+        0, in 5..19 -> Counter.MANY.get(units)
+        else -> getPluralForm(posAmount % 10, units)
+    }
+}
+
+enum class Counter(
+    private val second: String,
+    private val minute: String,
+    private val hour: String,
+    private val day: String
+) {
+    ONE("секунду", "минуту", "час", "день"),
+    FEW("секунды", "минуты", "часа", "дня"),
+    MANY("секунд", "минут", "часов", "дней");
+
+    fun get(unit: TimeUnits): String {
+        return when (unit) {
+            TimeUnits.SECOND -> second
+            TimeUnits.MINUTE -> minute
+            TimeUnits.HOUR -> hour
+            TimeUnits.DAY -> day
+        }
+    }
+}
+
+
+
 
 
