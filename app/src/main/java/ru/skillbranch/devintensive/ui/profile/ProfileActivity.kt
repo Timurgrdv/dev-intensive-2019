@@ -1,10 +1,9 @@
-package ru.skillbranch.devintensive
+package ru.skillbranch.devintensive.ui.profile
 
 
 import android.graphics.Color
 import android.graphics.PorterDuff
 import android.os.Bundle
-import android.os.PersistableBundle
 import android.text.InputType
 import android.util.Log
 import android.view.View
@@ -14,9 +13,10 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_main.*
+import ru.skillbranch.devintensive.R
 import ru.skillbranch.devintensive.models.Bender
 
-class MainActivity : AppCompatActivity(), View.OnClickListener {
+class ProfileActivity : AppCompatActivity(), View.OnClickListener {
 
     lateinit var benderImage: ImageView // отложенная инициализация, что поле будет обязяательно будет проинициализировано, но позже
     lateinit var textTxt: TextView // отложенная инициализация, что поле будет обязяательно будет проинициализировано, но позже
