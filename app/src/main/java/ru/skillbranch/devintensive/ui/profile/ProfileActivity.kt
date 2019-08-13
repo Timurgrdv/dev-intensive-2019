@@ -1,29 +1,34 @@
 package ru.skillbranch.devintensive.ui.profile
 
 
-import android.graphics.Color
+import android.graphics.ColorFilter
 import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 import android.os.Bundle
-import android.text.InputType
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
+import android.util.TypedValue
 import android.view.View
-import android.view.inputmethod.EditorInfo
 import android.widget.EditText
-import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProviders
 import kotlinx.android.synthetic.main.activity_profile.*
 import ru.skillbranch.devintensive.R
-import ru.skillbranch.devintensive.models.Bender
+import ru.skillbranch.devintensive.models.Profile
+import ru.skillbranch.devintensive.viewmodels.ProfileViewModel
 
-class ProfileActivity : AppCompatActivity(), View.OnClickListener {
+class ProfileActivity : AppCompatActivity() {
 
-    lateinit var benderImage: ImageView // отложенная инициализация, что поле будет обязяательно будет проинициализировано, но позже
-    lateinit var textTxt: TextView // отложенная инициализация, что поле будет обязяательно будет проинициализировано, но позже
-    lateinit var messageEt: EditText // отложенная инициализация, что поле будет обязяательно будет проинициализировано, но позже
-    lateinit var sendBtn: ImageView // отложенная инициализация, что поле будет обязяательно будет проинициализировано, но позже
+    companion object {
+        const val IS_EDIT_MODE = "IS_EDIT_MODE"
+    }
 
-    lateinit var benderObj: Bender
+    private lateinit var viewModel: ProfileViewModel
+    var isEditMode = false
+    lateinit var viewFields: Map<String, TextView>
 
     /**
      * Вызывается при первом создании или перезапуске Activity.
@@ -40,127 +45,168 @@ class ProfileActivity : AppCompatActivity(), View.OnClickListener {
      */
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.AppTheme)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_profile)
+        initViews(savedInstanceState)
+        initViewModel()
+        Log.d("M_ProfileActivity", "onCreate")
 
-        /** проинициализируем наши поля*/
-//        benderImage = findViewById(R.id.iv_bender)
-        benderImage = iv_bender     // можно записать так, т.к. мы используем android extantion
-        textTxt = tv_text     // можно записать так, т.к. мы используем android extantion
-        messageEt = et_message     // можно записать так, т.к. мы используем android extantion
-        sendBtn = iv_send     // можно записать так, т.к. мы используем android extantion
-
-
-        makeSendActionDone(messageEt)
-        val status = savedInstanceState?.getString("STATUS") ?: Bender.Status.NORMAL.name
-        val question = savedInstanceState?.getString("QUESTION") ?: Bender.Question.NAME.name
-        benderObj = Bender(Bender.Status.valueOf(status), Bender.Question.valueOf(question))
-
-        Log.d("M_MainActivity", "onCreate $status $question")
-
-        val (r, g, b) = benderObj.status.color
-        benderImage.setColorFilter(
-            Color.rgb(r, g, b),
-            PorterDuff.Mode.MULTIPLY
-        ) // применяем наложение цветового фильтра
-
-//        textTxt.setText(benderObj.askQuestion())
-        textTxt.text = benderObj.askQuestion()    // на котлине можно так
-        sendBtn.setOnClickListener(this)  // повесим слушатель на кнопку
     }
 
-    private fun makeSendActionDone(messageEt: EditText) {
-        messageEt.setRawInputType(InputType.TYPE_CLASS_TEXT)
-        messageEt.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_DONE) sendBtn.performClick()
-            false
+    private fun initViewModel() {
+        viewModel = ViewModelProviders.of(this).get(ProfileViewModel::class.java)
+        viewModel.getProfileData().observe(this, Observer { updateUI(it) })
+        viewModel.getTheme().observe(this, Observer {
+            updateTheme(it)
+        })
+    }
+
+    private fun updateRepository(isError: Boolean) {
+        if (isError) et_repository.text.clear()
+    }
+
+    private fun updateRepoError(isError: Boolean) {
+        wr_repository.isErrorEnabled = isError
+        wr_repository.error = if (isError) "Невалидный адрес репозитория" else null
+    }
+
+    private fun updateTheme(mode: Int) {     // передаём текущее значение темы
+        Log.d("M_ProfileActivity", "updateTheme")
+        delegate.setLocalNightMode(mode)
+    }
+
+
+    private fun updateUI(profile: Profile) {
+        profile.toMap().also {
+            for ((k, v) in viewFields) {
+                v.text = it[k].toString()
+            }
         }
     }
 
-    /** Если Activity возвращается в приоритетный режим после вызова onStop(),
-     * то в этом случае вызывается метод onRestart().
-     * Т.е. вызввается после того, как Activity была остановлена и снова запущена пользователем.
-     *  Всегда сопровождается вызовом метода onStart().
-     *
-     *  Используется для специальных действий, которые должный выполняться только при повторном запуске Activity
-     */
+    private fun initViews(savedInstanceState: Bundle?) {
 
-    override fun onRestart() {
-        super.onRestart()
-        Log.d("M_MainActivity", "onRestart")
+        viewFields = mapOf(
+            "nickName" to tv_nick_name,
+            "rank" to tv_rank,
+            "firstName" to et_first_name,
+            "lastName" to et_last_name,
+            "about" to et_about,
+            "repository" to et_repository,
+            "rating" to tv_rating,
+            "respect" to tv_respect
+        )
+
+        /** Будем восстанавливать значение из нашего Bundl'a */
+        isEditMode = savedInstanceState?.getBoolean(IS_EDIT_MODE, false) ?: false
+        showCurrentMode(isEditMode)
+
+        /** реализация классическим способом
+        btn_edit.setOnClickListener(object : View.OnClickListener {
+        override fun onClick(v: View?) {
+        isEditMode = !isEditMode
+        }
+        })
+         */
+
+        /** используем лямбда-выражение с единственным аргументом*/
+        btn_edit.setOnClickListener {
+            viewModel.onRepoEditCompleted(wr_repository.isErrorEnabled)
+
+            if (isEditMode) saveProfileInfo() // если находимся в режиме радактирования, то при клике на кнопку, вызываем saveProfileInfo()
+            isEditMode = !isEditMode
+            showCurrentMode(isEditMode)
+        }
+
+        btn_switch_theme.setOnClickListener {
+            viewModel.switchTheme()
+        }
+
+        et_repository.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {   }
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {   }
+
+            override fun afterTextChanged(s: Editable?) {
+                viewModel.onRepositoryChanged(s.toString())
+            }
+        })
     }
 
-    /** При вызове onStart() окно еще не видно пользователю, но вскоре будет видно.
-     * Вызывается непосредственно перед тем, как активность становится видимой пользователю.
-     *
-     * Чтение из бызы данных
-     * Запуск сложной анимации
-     * Запуск потоков, отслеживания показаний датчиков, запрос GPS, таймеров, сервисов и других процессов,
-     * которые нужны исключительно для обновления пользовательского интерфейса
-     *
-     * Затем следует onResume(), если Activity выходит на передний план.
-     */
-    override fun onStart() {
-        super.onStart()
-        Log.d("M_MainActivity", "onStart")
+    private fun showCurrentMode(isEdit: Boolean) {
+        /** созадим переменную и соберем в ней все наши view-элементы, для этого поле viewFields профильтруем, вызовем
+         * метод filter() - метод работы с коллекциями, который бerудет нам возвращать только те значения, которые соответствуют
+         * определенному критерию
+         */
+        val info = viewFields.filter { setOf("firstName", "lastName", "about", "repository").contains(it.key) }
+
+        /** пройдемся по нашей отфильтрованной коллекции(Map)
+         * неиспользуемое значение заменим подчеркиванием "_" (в нашем случае зничит игнорировать ключи)
+         */
+        for ((_, v) in info) {
+            v as EditText
+            v.isFocusable = isEdit
+            v.isFocusableInTouchMode = isEdit
+            v.isEnabled = isEdit
+            v.background.alpha = if (isEdit) 255 else 0
+        }
+
+        /**
+         * Нужно сделать так, чтобы иконка "глаза" в режиме редактирования пропадала
+         */
+        ic_eye.visibility = if (isEdit) View.GONE else View.VISIBLE
+        wr_about.isCounterEnabled = isEdit
+
+        /** будем менять цвет и картинку у кнопки btn_edit*/
+        with(btn_edit) {
+            //            btn_switch_theme
+            val filter: ColorFilter? = if (isEdit) {
+                PorterDuffColorFilter(
+                    resources.getColor(
+                        R.color.color_accent,
+                        theme
+                    ), //получим из наших ресурсов цвет (метод getColor(индификатор цвета, текущая тема))
+                    PorterDuff.Mode.SRC_IN  // режим наложения (это второй аргумент класса PorterDuffColorFilter
+                )
+            } else {
+                null    // если не врежиме редактирования то наш фильтр будет равнен null
+            }
+
+            /** создадим переменную icon, которая в режиме редактирования будет брать иконку,
+             *  а в режиме просмотра будут иконка другая
+             * */
+            val icon = if (isEdit) {
+                resources.getDrawable(R.drawable.ic_save_black_24dp, theme)  // в режиме радактироания будет одна иконка
+            } else {
+                resources.getDrawable(
+                    R.drawable.ic_edit_black_24dp,
+                    theme
+                )  // в режиме радактироания будет другая иконка
+            }
+
+            background.colorFilter = filter
+            setImageDrawable(icon)
+        }
     }
 
-    /** Вызывается , когда Activity начианет взаимодействовать с пользователем.
-     *
-     * запуск воспроизведения анимации, аудио или видео
-     * регистрация любых BroadcastReciever или других процессов, которые вы освободили/приостановилилв onPause()
-     * выполнеие любых других инициализаций, которые должны происходить, когда Activity вновь активна (камера).
-     *
-     * Тут должен быть максимально легкий и быстрый код, чтобы приложение оставалось отзывчивым
-     */
-
-    override fun onResume() {
-        super.onResume()
-        Log.d("M_MainActivity", "onResume")
+    /** Приватный метод, в котором мы будем сохранять необходимые нам данные*/
+    private fun saveProfileInfo() {
+        Profile(
+            firstName = et_first_name.text.toString(),
+            lastName = et_last_name.text.toString(),
+            about = et_about.text.toString(),
+            repository = et_repository.text.toString()
+        ).apply {
+            viewModel.saveProfileData(this)
+        }
     }
 
-    /**
-     * Метод onPause() вызывается после сворачивания текущей активности или перехода к новому.
-     * от onPause() можно перейти к вызову либо onResume(), либо onStop().
-     *
-     * остановка анимации, аудио и видое
-     * сохранение состояния пользовательского ввода(легкие процессы)
-     * сохранение в DB если данные должны быть доступны в новой Activity
-     * остановка сервисов, подписок, BroadcastReciver
-     *
-     * Тут должен быть максимально быстрый и лёгкий код, чтобы приложение оставалось отзывчивым
-     * */
-    override fun onPause() {
-        super.onPause()
-        Log.d("M_MainActivity", "onPause")
-    }
-
-    /** Методо onStop() вызывается, когда Activity становится невидимым для пользователя.
-     * Это может произойти при её уничтожении, или если была запущена другая Activity (сущестующая или новая),
-     * перекрывшая окно текущей Activity.
-     *
-     * запись в базу данных
-     * приостановка сложных анимаций
-     * приостановка потоков, остлеживания показаний датчиков, запросов к GPS, таймеров, сервисов или других процессов,
-     * которые нужны исключительно для обновления пользовательского интерфейса
-     *
-     * Не вызывается при вызове метода finish() у Activity()
-     */
-    override fun onStop() {
-        super.onStop()
-        Log.d("M_MainActivity", "onStop")
-    }
-
-    /**
-     * Метод вызывается по окончании работы Activity, при вызове метода finish() или в случае,
-     * когда система уничтожает экземпляр активности для освобождения ресурсов.
-     */
-
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.d("M_MainActivity", "onDestroy")
-
-    }
+//    private fun getThemeAccentColor(): Int {
+//        val value = TypedValue()
+//        theme.resolveAttribute(R.attr.colorAccent, value, true)
+//        return value.data
+//    }
 
     /** этот метод сохраняет состояние представления в Bundle
      * для API Level < 28 (Android P) этот метод будет выполняться до onStop(), и нет никаких гарантий относительно того,
@@ -170,52 +216,11 @@ class ProfileActivity : AppCompatActivity(), View.OnClickListener {
      */
     override fun onSaveInstanceState(outState: Bundle?) {
         super.onSaveInstanceState(outState)
-
-        // что такое bundle - это объект самого Android'а , который позволяет сохранить состояние нашего UI - интерфейса,
-        // если система уничтожит наш процесс
-        // bundle, по сути - набор "ключ" - "значений"
-        // в bundle не рекомендуется сохранять больше 50Кбайт
-        outState?.putString("STATUS", benderObj.status.name)
-        outState?.putString("QUESTION", benderObj.question.name)
-
-        Log.d("M_MainActivity", "onSaveInsranceState ${benderObj.status.name} ${benderObj.question.name}")
-    }
-
-    private fun makeErrorMessage() {
-        val errorMessage = when (benderObj.question) {
-            Bender.Question.NAME -> "Имя должно начинаться с заглавной буквы"
-            Bender.Question.PROFESSION -> "Профессия должна начинаться со строчной буквы"
-            Bender.Question.MATERIAL -> "Материал не должен содержать цифр"
-            Bender.Question.BDAY -> "Год моего рождения должен содержать только цифры"
-            Bender.Question.SERIAL -> "Серийный номер содержит только цифры, и их 7"
-            else -> "Ты справился\nНа этом все, вопросов больше нет"
-        }
-        textTxt.text = errorMessage + "\n" + benderObj.question.question
-        messageEt.setText("")
-    }
-
-    private fun isAnswerValid(): Boolean {
-        return benderObj.question.validate(messageEt.text.toString())
-    }
-
-    private fun sendAnswer() {
-        val (phrase, color) = benderObj.listenAnswer(messageEt.text.toString().toLowerCase()) // toLowerCase() - приводим к нижнему регистру
-        // метод listenAnswer() возвращает pair(phrase, color)
-        messageEt.setText("")
-        val (r, g, b) = color
-        benderImage.setColorFilter(
-            Color.rgb(r, g, b),
-            PorterDuff.Mode.MULTIPLY
-        ) // применяем наложение цветового фильтра
-        textTxt.text = phrase
-    }
-
-    override fun onClick(v: View?) {
-        if (v?.id == R.id.iv_send) {     // если данное view не null ("?"), и имеет id = R.id.iv_send
-            if (isAnswerValid())
-                sendAnswer()
-            else makeErrorMessage()
-        }
+        outState?.putBoolean(
+            IS_EDIT_MODE,
+            isEditMode
+        )   // сохраним состояние, переменную в режиме радактирования мы или нет
     }
 }
+
 
